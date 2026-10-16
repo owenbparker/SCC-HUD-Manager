@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="assets/app_icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCC HUD Manager</title>
+<!-- Every HUD in one place: a logo per game opens its HUD; under it, its
+     version and an update (or install) button. Behind it all, the HUDs'
+     background loop in the St. Clair green and gold. -->
+<style>
+  @font-face { font-family: "Inter"; src: url("fonts/Inter.ttf") format("truetype"); font-weight: 100 900; }
+  :root { --text: #f2f5f2; --muted: rgba(242, 245, 242, .62); --line: rgba(255, 255, 255, .14);
+          --green: #1f9d55; --gold: #f5c400; --accent: #f5c400; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: #08120c; color: var(--text); font: 14px/1.45 "Inter", system-ui, sans-serif; overflow: hidden; }
+
+  /* The background loop, as the HUDs play it: the video in grey, the two
+     colours (lightened) blended across it. */
+  #bg { position: fixed; inset: 0; overflow: hidden; }
+  #bg video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) brightness(1.6); }
+  #bg .tint { position: absolute; inset: 0; mix-blend-mode: multiply;
+              background: linear-gradient(to right, var(--l) 0%, var(--l) 30%, var(--r) 70%, var(--r) 100%); }
+  #bg .shade { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, .15) 0%, rgba(0, 0, 0, .62) 100%); }
+
+  header { position: relative; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 22px;
+           background: linear-gradient(rgba(0, 0, 0, .55), rgba(0, 0, 0, 0)); }
+  header img { height: 34px; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+  header .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .version { font-size: 12px; color: var(--muted); }
+  button { font: inherit; cursor: pointer; }
+  .update, .ghost { padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 13px; border: 0; }
+  .update { background: var(--gold); color: #1d1600; }
+  .update.check, .ghost { background: rgba(0, 0, 0, .45); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+  .update.check:hover, .ghost:hover { border-color: var(--gold); }
+  .update[disabled] { opacity: .7; cursor: default; }
+  .update.error { background: #8a2b2b; color: #fff; }
+
+  main { position: relative; height: calc(100% - 60px - 46px); display: grid; place-items: center; padding: 16px; }
+  .games { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .game { display: grid; justify-items: center; gap: 10px; }
+  .game > button { width: 300px; height: 190px; display: grid; place-items: center; padding: 34px; position: relative;
+                   background: rgba(8, 14, 10, .62); border: 1px solid var(--line); border-radius: 14px;
+                   backdrop-filter: blur(6px); transition: border-color .15s, transform .15s, background .15s; }
+  .game > button:hover, .game > button:focus-visible { border-color: var(--gold); background: rgba(8, 14, 10, .78);
+                   transform: translateY(-3px); outline: none; }
+  .game > button img { width: 232px; height: 122px; object-fit: contain; display: block; }
+  .game.missing > button img { opacity: .35; filter: grayscale(1); }
+  .game.running > button::after { content: ""; position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%;
+                                  background: #39d97a; box-shadow: 0 0 10px #39d97a; }
+  .game .meta { min-height: 32px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+                text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
+  .game .meta button { padding: 5px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 0;
+                       background: var(--gold); color: #1d1600; }
+  .game .meta button:hover { filter: brightness(1.1); }
+  .bar { width: 160px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--gold); transition: width .3s; }
+  .bad { color: #ffb4a8; }
+
+  footer { position: relative; height: 46px; display: flex; align-items: center; justify-content: center; gap: 14px;
+           font-size: 12px; color: var(--muted); }
+  #toast { position: fixed; left: 50%; bottom: 58px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
+           background: rgba(0, 0, 0, .75); border: 1px solid var(--line); font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="bg"><video src="assets/bg_loop.mp4" muted loop autoplay playsinline></video><div class="tint"></div><div class="shade"></div></div>
+<header>
+  <img src="assets/st-clair-saints.png" alt="">
+  <h1>SCC HUD Manager</h1>
+  <div class="right">
+    <span class="version" id="version"></span>
+    <button id="update" class="update" hidden></button>
+  </div>
+</header>
+<main><div class="games" id="games"></div></main>
+<footer><span id="summary"></span><button class="ghost" id="refresh">Check the HUDs for updates</button></footer>
+<div id="toast"></div>
+<script src="update.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const showUpdate = updateButton($("update"), $("version"));
+
+// The two colours, lightened as the HUDs do before blending them in.
+function lighten(c, amount) {
+  const n = parseInt(c.slice(1), 16), ch = s => Math.round(((n >> s) & 255) + (255 - ((n >> s) & 255)) * amount);
+  return "#" + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, "0")).join("");
+}
+const css = getComputedStyle(document.documentElement);
+$("bg").style.setProperty("--l", lighten(css.getPropertyValue("--green").trim(), .35));
+$("bg").style.setProperty("--r", lighten(css.getPropertyValue("--gold").trim(), .35));
+
+let toastTimer;
+function toast(text) {
+  $("toast").textContent = text;
+  $("toast").classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("on"), 3500);
+}
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const data = await r.json();
+  if (data.error) { alert(data.error); return null; }
+  render(data);
+  return data;
+}
+
+function install(h) {
+  const what = h.installed ? `Update ${h.name} to ${h.latest}?` : `Install ${h.name} ${h.latest}?`;
+  const running = h.running ? `\n\n${h.name} is running: it will close for the update (its settings are kept).` : "";
+  const notes = h.notes ? `\n\nWhat's new:\n${h.notes}` : "";
+  if (confirm(what + running + notes)) post("/api/install", { id: h.id, close: h.running });
+}
+
+function tile(h) {
+  const el = document.createElement("div");
+  el.className = "game";
+  el.dataset.id = h.id;
+  el.innerHTML = `<button title=""><img alt=""></button><div class="meta"></div>`;
+  el.querySelector("img").src = h.logo;
+  el.querySelector("img").alt = h.name;
+  el.querySelector("button").onclick = () => {
+    const now = current.find(x => x.id === h.id);
+    if (now.status === "downloading" || now.status === "installing") return;
+    if (!now.installed) return now.released ? install(now) : toast(`${now.name} isn't out yet.`);
+    post("/api/launch", { id: now.id }).then(d => d && toast(`Opening ${now.name}…`));
+  };
+  return el;
+}
+
+let current = [];
+function render(s) {
+  showUpdate(s.update);
+  current = s.huds;
+  const box = $("games");
+  for (const h of s.huds) {
+    let el = box.querySelector(`[data-id="${h.id}"]`);
+    if (!el) { el = tile(h); box.appendChild(el); }
+    el.classList.toggle("missing", !h.installed);
+    el.classList.toggle("running", !!h.running);
+    el.querySelector("button").title = !h.installed ? (h.released ? `Install ${h.name}` : `${h.name} isn't out yet`)
+      : `Open ${h.name}` + (h.running ? " (running)" : "");
+    const meta = el.querySelector(".meta");
+    let html;
+    if (h.status === "downloading") html = `<div class="bar"><i style="width:${h.progress}%"></i></div> ${h.progress}%`;
+    else if (h.status === "installing") html = `<div class="bar"><i style="width:100%"></i></div> Installing…`;
+    else if (!h.installed) html = h.released ? `<button data-act="install">Install ${h.latest}</button>` : "Coming soon";
+    else if (h.update) html = `${h.version || "?"} <button data-act="install">Update to ${h.latest}</button>`;
+    else html = `${h.version || "Installed"}`;
+    if (h.status === "error") html += ` <span class="bad" title="${(h.error || "").replace(/"/g, "&quot;")}">Failed — try again</span>`;
+    if (meta.dataset.html !== html) {
+      meta.dataset.html = html;
+      meta.innerHTML = html;
+      const b = meta.querySelector("[data-act]");
+      if (b) b.onclick = () => install(current.find(x => x.id === h.id));
+    }
+  }
+  const updates = s.huds.filter(h => h.update).length, missing = s.huds.filter(h => h.released && !h.installed).length;
+  $("summary").textContent = updates ? `${updates} update${updates > 1 ? "s" : ""} ready` :
+    missing ? `${missing} HUD${missing > 1 ? "s" : ""} not installed` : "Every HUD is up to date";
+}
+
+$("refresh").onclick = async () => {
+  $("refresh").disabled = true;
+  $("refresh").textContent = "Checking…";
+  try { await post("/api/check"); } finally { $("refresh").disabled = false; $("refresh").textContent = "Check the HUDs for updates"; }
+};
+
+(async function poll() {
+  try { render(await (await fetch("/api/state")).json()); } catch (e) {}
+  const busy = current.some(h => h.status === "downloading" || h.status === "installing");
+  setTimeout(poll, busy ? 500 : 3000);
+})();
+</script>
+</body>
+</html>

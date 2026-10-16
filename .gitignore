@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+smoke-test.txt
+install-all.txt
+_downloads/
+_update/
+build/
+dist/
