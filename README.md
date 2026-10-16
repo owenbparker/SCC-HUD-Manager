@@ -9,6 +9,7 @@ an **Update** button (or **Install** for one that isn't on the PC yet).
 | League of Legends | [LeagueHUDSCC](https://github.com/owenbparker/LeagueHUDSCC) | `C:\SCC LoL HUD` |
 | VALORANT | [VALHUDSCC](https://github.com/owenbparker/VALHUDSCC) | `C:\SCC VAL HUD` |
 | Call of Duty | [COD_SCC_HUD](https://github.com/owenbparker/COD_SCC_HUD) | `C:\SCC CoD HUD` |
+| Rocket League | [RLHUD_SCC](https://github.com/owenbparker/RLHUD_SCC) | `C:\SCC RL HUD` |
 
 ## Install
 

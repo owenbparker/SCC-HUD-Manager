@@ -15,6 +15,9 @@ HUDS = [
     {"id": "cod", "name": "Call of Duty HUD", "repo": "owenbparker/COD_SCC_HUD",
      "asset": "CodHUD-windows.zip", "exe": "CodHUD.exe", "folder": r"C:\SCC CoD HUD",
      "logo": "assets/games/cod.png", "port": 8780},
+    {"id": "rl", "name": "Rocket League HUD", "repo": "owenbparker/RLHUD_SCC",
+     "asset": "RocketLeagueHUD-windows.zip", "exe": "RocketLeagueHUD.exe", "folder": r"C:\SCC RL HUD",
+     "logo": "assets/games/rocketleague.png", "port": 8781},
 ]
 
 

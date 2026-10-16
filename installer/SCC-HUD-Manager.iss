@@ -49,7 +49,7 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\HUDManager.exe"; WorkingDir:
 
 [Run]
 ; Every HUD: downloaded from its own GitHub releases by the manager.
-Filename: "{app}\HUDManager.exe"; Parameters: "--install-all"; WorkingDir: "{app}"; StatusMsg: "Installing every HUD (League of Legends, VALORANT, Call of Duty)..."; Flags: runhidden waituntilterminated
+Filename: "{app}\HUDManager.exe"; Parameters: "--install-all"; WorkingDir: "{app}"; StatusMsg: "Installing every HUD (League of Legends, VALORANT, Call of Duty, Rocket League)..."; Flags: runhidden waituntilterminated
 Filename: "{app}\HUDManager.exe"; WorkingDir: "{app}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
@@ -64,7 +64,7 @@ Type: files; Name: "{app}\install-all.txt"
 Type: filesandordirs; Name: "{app}\_downloads"
 
 [Messages]
-ReadyLabel2a=Setup will download the latest SCC HUD Manager from GitHub and install it to C:\SCC HUD Manager, then install every HUD (League of Legends, VALORANT and Call of Duty).
+ReadyLabel2a=Setup will download the latest SCC HUD Manager from GitHub and install it to C:\SCC HUD Manager, then install every HUD (League of Legends, VALORANT, Call of Duty and Rocket League).
 
 [Code]
 const
