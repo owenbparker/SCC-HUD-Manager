@@ -18,6 +18,9 @@ HUDS = [
     {"id": "rl", "name": "Rocket League HUD", "repo": "owenbparker/RLHUD_SCC",
      "asset": "RocketLeagueHUD-windows.zip", "exe": "RocketLeagueHUD.exe", "folder": r"C:\SCC RL HUD",
      "logo": "assets/games/rocketleague.png", "port": 8781},
+    {"id": "gfx", "name": "GFX Engine", "repo": "owenbparker/GFX-Engine",
+     "asset": "GFXEngine-windows.zip", "exe": "GFXEngine.exe", "folder": r"C:\SCC GFX Engine",
+     "logo": "assets/games/gfx.png", "port": 8782},
 ]
 
 
