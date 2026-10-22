@@ -105,7 +105,7 @@ class ServerTests(unittest.TestCase):
                         r.read()
                 time.sleep(0.2)
                 state = json.loads(urllib.request.urlopen(base + "/api/state", timeout=5).read())
-                self.assertEqual([h["id"] for h in state["huds"]], ["lol", "val", "cod", "rl", "gfx"])
+                self.assertEqual([h["id"] for h in state["huds"]], ["lol", "val", "cod", "rl", "smash", "gfx"])
                 req = urllib.request.Request(base + "/api/launch", b'{"id": "lol"}', {"Content-Type": "application/json"})
                 with self.assertRaises(urllib.error.HTTPError):   # not installed
                     urllib.request.urlopen(req, timeout=5)
