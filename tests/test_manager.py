@@ -81,6 +81,33 @@ class ManagerTests(unittest.TestCase):
             m.check()
             self.assertTrue(m.huds["lol"].info()["update"])
 
+    def test_update_all(self):
+        lol, val = catalog.by_id("lol"), catalog.by_id("val")
+        with tempfile.TemporaryDirectory() as tmp:
+            releases = {e["repo"]: make_release(tmp, e, "v1.0.2", {e["exe"]: "new"}) for e in (lol, val)}
+            m = Manager(root=os.path.join(tmp, "C"), latest=lambda repo: releases.get(repo))
+            for e in (lol, val):   # both installed at v1.0.1
+                h = m.huds[e["id"]]
+                os.makedirs(h.folder)
+                open(h.exe_path, "w").close()
+                with open(os.path.join(h.folder, "version.txt"), "w") as f:
+                    f.write("v1.0.1")
+            m.check()
+            done = []
+            m.update_all_in_background(then=lambda: done.append(True))
+            for _ in range(100):
+                if done:
+                    break
+                time.sleep(0.05)
+            self.assertEqual(done, [True])
+            self.assertFalse(m.updating_all)
+            for e in (lol, val):
+                self.assertEqual(m.huds[e["id"]].version(), "v1.0.2")
+                self.assertFalse(m.huds[e["id"]].info()["update"])
+            self.assertFalse(m.huds["cod"].installed())   # not installed: left alone
+            with self.assertRaises(ValueError):
+                m.update_all_in_background()
+
     def test_copy_app(self):
         with tempfile.TemporaryDirectory() as tmp:
             new, dest = os.path.join(tmp, "new"), os.path.join(tmp, "dest")

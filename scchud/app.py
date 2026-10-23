@@ -24,7 +24,19 @@ class ManagerApp:
         self.httpd = None
 
     def state(self):
-        return {"huds": self.manager.info(), "update": self.updater.info()}
+        return {"huds": self.manager.info(), "update": self.updater.info(), "updating_all": self.manager.updating_all}
+
+    def update_all(self):
+        """Every HUD update, then this app's own (it restarts the app, so it goes last)."""
+        u = self.updater.info()
+        then = self._update_self if u["available"] and u["can_install"] and u["status"] == "idle" else None
+        self.manager.update_all_in_background(then)
+
+    def _update_self(self):
+        try:
+            self.updater.install_in_background()
+        except ValueError as e:
+            log(f"Couldn't update SCC HUD Manager: {e}", "warn")
 
 
 def web_file(rel):
@@ -75,6 +87,8 @@ def make_handler(app):
                     app.manager.launch(body.get("id"))
                 elif path == "/api/install":
                     app.manager.install_in_background(body.get("id"), close_running=bool(body.get("close")))
+                elif path == "/api/update-all":
+                    app.update_all()
                 elif path == "/api/check":
                     app.manager.check()
                     app.updater.check()

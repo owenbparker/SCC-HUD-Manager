@@ -84,7 +84,7 @@ class Hud:
         self.folder = folder
         self.latest = None        # GitHub's latest release
         self.check_error = None
-        self.status = "idle"      # idle, downloading, installing, error
+        self.status = "idle"      # idle, queued, downloading, installing, error
         self.progress = 0
         self.error = None
         self.lock = threading.Lock()
@@ -128,6 +128,8 @@ class Manager:
             self.huds[e["id"]] = Hud(e, folder)
         self._latest = latest
         self.work_dir = os.path.join(DATA_DIR, "_downloads")
+        self.updating_all = False
+        self._all_lock = threading.Lock()
 
     def info(self):
         return [h.info() for h in self.huds.values()]
@@ -159,7 +161,7 @@ class Manager:
     def install_in_background(self, hud_id, close_running=False):
         h = self.huds[catalog.by_id(hud_id)["id"]]
         with h.lock:
-            if h.status in ("downloading", "installing"):
+            if h.status in ("queued", "downloading", "installing"):
                 return
             if not h.asset():
                 raise ValueError(f"{h.entry['name']} has no release to install yet")
@@ -167,6 +169,40 @@ class Manager:
                 raise ValueError(f"{h.entry['name']} is running: close it first")
             h.status, h.progress, h.error = "downloading", 0, None
         threading.Thread(target=self._install, args=(h, close_running), daemon=True).start()
+
+    def update_all_in_background(self, then=None):
+        """Updates every installed HUD that's out of date, one at a time, with
+        no questions: a running HUD is closed for its update and started again
+        after. then() runs once they're all done (the app's own update)."""
+        with self._all_lock:
+            if self.updating_all:
+                return
+            todo = [h for h in self.huds.values()
+                    if h.info()["update"] and h.status not in ("queued", "downloading", "installing")]
+            if not todo and not then:
+                raise ValueError("Every HUD is up to date")
+            for h in todo:
+                h.status, h.progress, h.error = "queued", 0, None
+            self.updating_all = True
+        threading.Thread(target=self._update_all, args=(todo, then), daemon=True).start()
+
+    def _update_all(self, todo, then):
+        try:
+            for h in todo:
+                was_running = running(h.entry["exe"])
+                h.status = "downloading"
+                self._install(h, close_running=True)
+                if was_running and h.status == "idle":
+                    try:
+                        self.launch(h.entry["id"])
+                    except Exception as e:
+                        log(f"Couldn't restart {h.entry['name']}: {e}", "warn")
+            failed = [h.entry["name"] for h in todo if h.status == "error"]
+            log(f"Updated {len(todo) - len(failed)} of {len(todo)} HUDs" + (f" ({', '.join(failed)} failed)" if failed else ""))
+        finally:
+            self.updating_all = False
+        if then:
+            then()
 
     def install(self, hud_id, close_running=False):
         """The same, waiting for it (the installer's first run, tests)."""
