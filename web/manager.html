@@ -64,6 +64,12 @@
   #toast { position: fixed; left: 50%; bottom: 58px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
            background: rgba(0, 0, 0, .75); border: 1px solid var(--line); font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
   #toast.on { opacity: 1; }
+  /* Dark scroll bars (WebView2 otherwise draws the light Windows ones). */
+  ::-webkit-scrollbar { width: 12px; height: 12px; background: transparent; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3a3d44; border: 3px solid transparent; border-radius: 8px; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #50545c; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-button { display: none; }
 </style>
 </head>
 <body>
