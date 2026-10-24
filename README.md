@@ -11,6 +11,7 @@ an **Update** button (or **Install** for one that isn't on the PC yet).
 | Call of Duty | [COD_SCC_HUD](https://github.com/owenbparker/COD_SCC_HUD) | `C:\SCC CoD HUD` |
 | Rocket League | [RLHUD_SCC](https://github.com/owenbparker/RLHUD_SCC) | `C:\SCC RL HUD` |
 | Super Smash Bros. Ultimate | [SmashHUD_SCC](https://github.com/owenbparker/SmashHUD_SCC) | `C:\SCC Smash HUD` |
+| Overwatch 2 | [OWHUD_SCC](https://github.com/owenbparker/OWHUD_SCC) | `C:\SCC Overwatch HUD` |
 
 ## Install
 
