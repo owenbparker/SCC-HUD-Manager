@@ -23,7 +23,7 @@ HUDS = [
      "logo": "assets/games/smash.png", "port": 8784},
     {"id": "ow", "name": "Overwatch HUD", "repo": "owenbparker/OWHUD_SCC",
      "asset": "OverwatchHUD-windows.zip", "exe": "OverwatchHUD.exe", "folder": r"C:\SCC Overwatch HUD",
-     "logo": "assets/games/overwatch.svg", "port": 8785},
+     "logo": "assets/games/overwatch.png", "port": 8785},
     {"id": "gfx", "name": "GFX Engine", "repo": "owenbparker/GFX-Engine",
      "asset": "GFXEngine-windows.zip", "exe": "GFXEngine.exe", "folder": r"C:\SCC GFX Engine",
      "logo": "assets/games/gfx.png", "port": 8782},
