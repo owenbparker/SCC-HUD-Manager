@@ -7,7 +7,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
-from .config import WEB_DIR
+from .config import DATA_DIR, WEB_DIR
+from . import appearance
 from .log import log, since
 from .manager import Manager
 from .updater import Updater, clean_up_old_update
@@ -67,6 +68,8 @@ def make_handler(app):
 
         def do_GET(self):
             path = urlparse(self.path).path
+            if appearance.handle(self, "GET", path, DATA_DIR):
+                return
             if path in ("/", "/manager"):
                 path = "/manager.html"
             if path == "/api/state":
@@ -81,6 +84,8 @@ def make_handler(app):
 
         def do_POST(self):
             path = urlparse(self.path).path
+            if appearance.handle(self, "POST", path, DATA_DIR):
+                return
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
                 if path == "/api/launch":

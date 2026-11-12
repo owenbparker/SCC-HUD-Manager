@@ -71,8 +71,10 @@
   ::-webkit-scrollbar-thumb:hover { background: #50545c; border: 3px solid transparent; background-clip: padding-box; }
   ::-webkit-scrollbar-button { display: none; }
 </style>
+<link rel="stylesheet" href="appearance.css">
+<script src="appearance.js"></script>
 </head>
-<body>
+<body class="manager">
 <div id="bg"><video src="assets/bg_loop.mp4" muted loop autoplay playsinline></video><div class="tint"></div><div class="shade"></div></div>
 <header>
   <img src="assets/st-clair-saints.png" alt="">
@@ -83,12 +85,15 @@
   </div>
 </header>
 <main><div class="games" id="games"></div></main>
-<footer><span id="summary"></span><button class="update" id="update-all" hidden></button><button class="ghost" id="refresh">Check the HUDs for updates</button></footer>
+<footer><span id="summary"></span><button class="update" id="update-all" hidden></button><button class="ghost" id="refresh">Check the HUDs for updates</button><button class="ghost" id="appearance-btn">Appearance…</button></footer>
+<dialog id="appearance-dlg" class="ap-dialog" aria-labelledby="appearance-title"><div class="ap-dialog-head"><h2 id="appearance-title">Appearance</h2><button class="ghost" id="appearance-close">Done</button></div><div id="appearance-box"></div></dialog>
 <div id="toast"></div>
 <script src="update.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const showUpdate = updateButton($("update"), $("version"));
+$("appearance-btn").addEventListener("click", () => { if (window.Appearance) Appearance.render($("appearance-box")); $("appearance-dlg").showModal(); });
+$("appearance-close").addEventListener("click", () => $("appearance-dlg").close());
 
 // The two colours, lightened as the HUDs do before blending them in.
 function lighten(c, amount) {
