@@ -64,9 +64,17 @@
   #toast { position: fixed; left: 50%; bottom: 58px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px;
            background: rgba(0, 0, 0, .75); border: 1px solid var(--line); font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
   #toast.on { opacity: 1; }
+  /* Dark scroll bars (WebView2 otherwise draws the light Windows ones). */
+  ::-webkit-scrollbar { width: 12px; height: 12px; background: transparent; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3a3d44; border: 3px solid transparent; border-radius: 8px; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #50545c; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-button { display: none; }
 </style>
+<link rel="stylesheet" href="appearance.css">
+<script src="appearance.js"></script>
 </head>
-<body>
+<body class="manager">
 <div id="bg"><video src="assets/bg_loop.mp4" muted loop autoplay playsinline></video><div class="tint"></div><div class="shade"></div></div>
 <header>
   <img src="assets/st-clair-saints.png" alt="">
@@ -77,12 +85,15 @@
   </div>
 </header>
 <main><div class="games" id="games"></div></main>
-<footer><span id="summary"></span><button class="ghost" id="refresh">Check the HUDs for updates</button></footer>
+<footer><span id="summary"></span><button class="update" id="update-all" hidden></button><button class="ghost" id="refresh">Check the HUDs for updates</button><button class="ghost" id="appearance-btn">Appearance…</button></footer>
+<dialog id="appearance-dlg" class="ap-dialog" aria-labelledby="appearance-title"><div class="ap-dialog-head"><h2 id="appearance-title">Appearance</h2><button class="ghost" id="appearance-close">Done</button></div><div id="appearance-box"></div></dialog>
 <div id="toast"></div>
 <script src="update.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const showUpdate = updateButton($("update"), $("version"));
+$("appearance-btn").addEventListener("click", () => { if (window.Appearance) Appearance.render($("appearance-box")); $("appearance-dlg").showModal(); });
+$("appearance-close").addEventListener("click", () => $("appearance-dlg").close());
 
 // The two colours, lightened as the HUDs do before blending them in.
 function lighten(c, amount) {
@@ -125,15 +136,16 @@ function tile(h) {
   el.querySelector("img").alt = h.name;
   el.querySelector("button").onclick = () => {
     const now = current.find(x => x.id === h.id);
-    if (now.status === "downloading" || now.status === "installing") return;
+    if (["queued", "downloading", "installing"].includes(now.status)) return;
     if (!now.installed) return now.released ? install(now) : toast(`${now.name} isn't out yet.`);
     post("/api/launch", { id: now.id }).then(d => d && toast(`Opening ${now.name}…`));
   };
   return el;
 }
 
-let current = [];
+let current = [], updatingAll = false;
 function render(s) {
+  updatingAll = !!s.updating_all;
   showUpdate(s.update);
   current = s.huds;
   const box = $("games");
@@ -146,7 +158,8 @@ function render(s) {
       : `Open ${h.name}` + (h.running ? " (running)" : "");
     const meta = el.querySelector(".meta");
     let html;
-    if (h.status === "downloading") html = `<div class="bar"><i style="width:${h.progress}%"></i></div> ${h.progress}%`;
+    if (h.status === "queued") html = `<div class="bar"><i style="width:0"></i></div> Waiting…`;
+    else if (h.status === "downloading") html = `<div class="bar"><i style="width:${h.progress}%"></i></div> ${h.progress}%`;
     else if (h.status === "installing") html = `<div class="bar"><i style="width:100%"></i></div> Installing…`;
     else if (!h.installed) html = h.released ? `<button data-act="install">Install ${h.latest}</button>` : "Coming soon";
     else if (h.update) html = `${h.version || "?"} <button data-act="install">Update to ${h.latest}</button>`;
@@ -162,7 +175,15 @@ function render(s) {
   const updates = s.huds.filter(h => h.update).length, missing = s.huds.filter(h => h.released && !h.installed).length;
   $("summary").textContent = updates ? `${updates} update${updates > 1 ? "s" : ""} ready` :
     missing ? `${missing} HUD${missing > 1 ? "s" : ""} not installed` : "Every HUD is up to date";
+  // Update all: every HUD update (and this app's own, last), no questions asked.
+  const own = s.update && s.update.available && s.update.can_install ? 1 : 0, all = updates + own;
+  const busy = updatingAll || s.huds.some(h => h.status === "queued");
+  $("update-all").hidden = !all && !busy;
+  $("update-all").disabled = busy;
+  $("update-all").textContent = busy ? "Updating…" : `Update all (${all})`;
 }
+
+$("update-all").onclick = () => { $("update-all").disabled = true; post("/api/update-all"); };
 
 $("refresh").onclick = async () => {
   $("refresh").disabled = true;
@@ -172,7 +193,7 @@ $("refresh").onclick = async () => {
 
 (async function poll() {
   try { render(await (await fetch("/api/state")).json()); } catch (e) {}
-  const busy = current.some(h => h.status === "downloading" || h.status === "installing");
+  const busy = updatingAll || current.some(h => ["queued", "downloading", "installing"].includes(h.status));
   setTimeout(poll, busy ? 500 : 3000);
 })();
 </script>

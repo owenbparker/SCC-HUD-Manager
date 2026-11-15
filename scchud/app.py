@@ -7,7 +7,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
-from .config import WEB_DIR
+from .config import DATA_DIR, WEB_DIR
+from . import appearance
 from .log import log, since
 from .manager import Manager
 from .updater import Updater, clean_up_old_update
@@ -24,7 +25,19 @@ class ManagerApp:
         self.httpd = None
 
     def state(self):
-        return {"huds": self.manager.info(), "update": self.updater.info()}
+        return {"huds": self.manager.info(), "update": self.updater.info(), "updating_all": self.manager.updating_all}
+
+    def update_all(self):
+        """Every HUD update, then this app's own (it restarts the app, so it goes last)."""
+        u = self.updater.info()
+        then = self._update_self if u["available"] and u["can_install"] and u["status"] == "idle" else None
+        self.manager.update_all_in_background(then)
+
+    def _update_self(self):
+        try:
+            self.updater.install_in_background()
+        except ValueError as e:
+            log(f"Couldn't update SCC HUD Manager: {e}", "warn")
 
 
 def web_file(rel):
@@ -55,6 +68,8 @@ def make_handler(app):
 
         def do_GET(self):
             path = urlparse(self.path).path
+            if appearance.handle(self, "GET", path, DATA_DIR):
+                return
             if path in ("/", "/manager"):
                 path = "/manager.html"
             if path == "/api/state":
@@ -69,12 +84,16 @@ def make_handler(app):
 
         def do_POST(self):
             path = urlparse(self.path).path
+            if appearance.handle(self, "POST", path, DATA_DIR):
+                return
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
                 if path == "/api/launch":
                     app.manager.launch(body.get("id"))
                 elif path == "/api/install":
                     app.manager.install_in_background(body.get("id"), close_running=bool(body.get("close")))
+                elif path == "/api/update-all":
+                    app.update_all()
                 elif path == "/api/check":
                     app.manager.check()
                     app.updater.check()
@@ -82,6 +101,8 @@ def make_handler(app):
                     app.updater.check()
                 elif path == "/api/update/install":
                     app.updater.install_in_background()
+                elif path == "/api/update/rollback":
+                    app.updater.rollback_in_background()
                 else:
                     return self._json({"error": "not found"}, 404)
                 self._json(app.state())
